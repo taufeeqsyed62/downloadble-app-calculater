@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scientific Calculator</title>
+    <meta name="theme-color" content="#2196F3">
     <link rel="manifest" href="manifest.json">
     <style>
         * {
@@ -26,6 +27,7 @@
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            margin: 15px;
         }
 
         #display {
@@ -54,6 +56,7 @@
             cursor: pointer;
             background: #666;
             color: white;
+            transition: background 0.3s;
         }
 
         button:hover {
@@ -79,6 +82,7 @@
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0,0,0,0.3);
             text-align: center;
+            z-index: 1000;
         }
     </style>
 </head>
@@ -121,10 +125,10 @@
     </div>
 
     <div id="installPopup">
-        <h2>Install Calculator App</h2>
+        <h2>Install Calculator</h2>
         <p>Add this app to your home screen for better experience!</p>
-        <button id="downloadButton" style="margin: 10px;">Install Now</button>
-        <button onclick="closeInstallPopup()">Close</button>
+        <button id="installButton" style="margin: 10px; padding: 10px 20px;">Install Now</button>
+        <button onclick="closeInstallPopup()" style="padding: 10px 20px;">Later</button>
     </div>
 
     <script>
@@ -141,11 +145,12 @@
         function calculate() {
             try {
                 let expression = document.getElementById('display').value;
-                expression = expression.replace(/sin\(/g, 'Math.sin(')
-                                       .replace(/cos\(/g, 'Math.cos(')
-                                       .replace(/tan\(/g, 'Math.tan(')
-                                       .replace(/log\(/g, 'Math.log10(')
-                                       .replace(/sqrt\(/g, 'Math.sqrt(');
+                expression = expression
+                    .replace(/sin\(/g, 'Math.sin(')
+                    .replace(/cos\(/g, 'Math.cos(')
+                    .replace(/tan\(/g, 'Math.tan(')
+                    .replace(/log\(/g, 'Math.log10(')
+                    .replace(/sqrt\(/g, 'Math.sqrt(');
                 const result = eval(expression);
                 document.getElementById('display').value = result;
             } catch (error) {
@@ -153,47 +158,53 @@
             }
         }
 
-        // PWA Installation
+        // PWA Installation Handling
         let deferredPrompt;
-        
+        const installPopup = document.getElementById('installPopup');
+        const installButton = document.getElementById('installButton');
+
         window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('beforeinstallprompt event triggered');
             e.preventDefault();
             deferredPrompt = e;
-            if (!localStorage.getItem('installPromptShown')) {
-                showInstallPopup();
+            
+            if (!window.matchMedia('(display-mode: standalone)').matches) {
+                installPopup.style.display = 'block';
             }
         });
 
-        function showInstallPopup() {
-            document.getElementById('installPopup').style.display = 'block';
-            localStorage.setItem('installPromptShown', 'true');
-        }
-
-        function closeInstallPopup() {
-            document.getElementById('installPopup').style.display = 'none';
-        }
-
-        document.getElementById('downloadButton').addEventListener('click', () => {
+        installButton.addEventListener('click', async () => {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('User accepted install prompt');
-                    } else {
-                        console.log('User dismissed install prompt');
-                    }
-                    deferredPrompt = null;
-                    closeInstallPopup();
-                });
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                deferredPrompt = null;
+                installPopup.style.display = 'none';
             }
         });
+
+        function closeInstallPopup() {
+            installPopup.style.display = 'none';
+        }
 
         // Service Worker Registration
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(registration => console.log('SW registered'))
-                .catch(err => console.log('SW registration failed'));
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful:', registration);
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed:', err);
+                    });
+            });
         }
+
+        // Check if app is already installed
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA was installed');
+            installPopup.style.display = 'none';
+        });
     </script>
 </body>
 </html>
